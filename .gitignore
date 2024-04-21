@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Environment Folder (instead of sharing environment share requirements.txt :D )
+videomatcher_env/
+
 # Distribution / packaging
 .Python
 build/
