@@ -1,0 +1,3 @@
+# Backend Components
+
+I figured here we can place all of the backend related code. We could create signatures here, we could then call on the UI **after** we have completed our application's preprocessing steps. We could possibly create a `videoprocessing.py` or `extractsignatures.py` file. We could separate these processes even more with `shotdetection.py`, `colorprocessing.py` and other preprocessing files like that. Just a few ideas, I just create some sort of outline here.
