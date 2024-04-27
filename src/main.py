@@ -1,11 +1,7 @@
 # ENTRY POINT
 import sys
-from PyQt6.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget
 from ui.mainwindow import MainWindow
-
-# Personal Notes
-# QApplication holds the Qt event loop, one instance required, application sits in event loop until action is taken ie.) .exec_()
-# similar to the event loop of Node.js w/ async await, events are added to a queue, from queue events go to event handlers and go back to loop awaiting more events
 
 def main():
     app = QApplication(sys.argv)
