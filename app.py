@@ -1,6 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QMainWindow, QFileDialog, QSpacerItem, QSizePolicy
-from PyQt5.QtCore import Qt, QUrl, pyqtSignal
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QMainWindow, QFileDialog, QSpacerItem, QSizePolicy, QLabel
+from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 
@@ -66,18 +66,32 @@ class Controls(QWidget):
         self.upload_button.clicked.connect(self.upload_video_signal.emit)
         
 class VideoPlayer(QVideoWidget):
-    def __init__(self):
+    def __init__(self, label_text):
         super().__init__()
+        self.screen_type = label_text
         self.media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.media_player.setVideoOutput(self)  
         self.setStyleSheet("background-color: black;")
+        
+        # initialize label for displaying text
+        self.label = QLabel(label_text, self)
+        self.label.setStyleSheet("QLabel { color : white; }")
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.resize(self.size())
+        self.matchFound = False  # boolean flag for match simulation
+        self.media_player.mediaStatusChanged.connect(self.handle_media_status_change)
+
 
     def load_video(self, url):
         self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(url)))
+        if self.screen_type == "Match":
+            self.label.setText("Looking for a match...")  # change text when loading a video   
+        QTimer.singleShot(5000, self.simulate_match_found) # DELETE AFTER
         
     def play(self):
-        self.media_player.play()
-
+        if self.media_player.mediaStatus() == QMediaPlayer.LoadedMedia and self.matchFound:  # check if match is found
+            self.label.hide()
+            self.media_player.play() 
     def pause(self):
         self.media_player.pause()
 
@@ -90,7 +104,17 @@ class VideoPlayer(QVideoWidget):
         new_width = event.size().width()
         new_height = int(new_width * 9 / 16)
         self.resize(new_width, new_height)
+        self.label.resize(self.size())
 
+    def handle_media_status_change(self, status):
+        if status == QMediaPlayer.LoadedMedia and self.matchFound:
+            self.label.hide()
+            self.play()  
+    # DELETE LATER
+    def simulate_match_found(self):
+        self.matchFound = True
+        self.handle_media_status_change(self.media_player.mediaStatus())
+        
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -107,8 +131,8 @@ class MainWindow(QMainWindow):
         main_layout.addStretch(1) 
         
         video_layout = QHBoxLayout()
-        self.query_screen = VideoPlayer()
-        self.match_screen = VideoPlayer()
+        self.query_screen = VideoPlayer("Query")
+        self.match_screen = VideoPlayer("Match")
         
         self.query_screen.setMinimumSize(640, 480)
         self.match_screen.setMinimumSize(640, 480)
@@ -130,7 +154,7 @@ class MainWindow(QMainWindow):
         self.controls.pause_signal.connect(self.query_screen.pause)
         self.controls.reset_signal.connect(self.query_screen.reset)
         self.controls.upload_video_signal.connect(self.upload_video)
-        
+                
     def handle_media_status_change(self, status):
         if status == QMediaPlayer.LoadedMedia:
             self.controls.play_button.setEnabled(True)
@@ -146,7 +170,6 @@ class MainWindow(QMainWindow):
         if file_name:
             self.query_screen.load_video(file_name)
             self.match_screen.load_video(file_name)
-            self.query_screen.play()  # Automatically play the video after loading 
         
 def main():
     app = QApplication(sys.argv)
