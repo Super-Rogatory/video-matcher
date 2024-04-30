@@ -70,6 +70,7 @@ class VideoPlayer(QVideoWidget):
         super().__init__()
         self.media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.media_player.setVideoOutput(self)  
+        self.setStyleSheet("background-color: black;")
 
     def load_video(self, url):
         self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(url)))
