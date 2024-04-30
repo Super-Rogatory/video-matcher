@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVB
 from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
+from PyQt5.QtGui import QFont
 
 class Controls(QWidget):
     play_signal = pyqtSignal()
@@ -71,15 +72,18 @@ class VideoPlayer(QVideoWidget):
         self.screen_type = label_text
         self.media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.media_player.setVideoOutput(self)  
-        self.setStyleSheet("background-color: black;")
-        
+        font = QFont("Segoe UI", 12)
         # initialize label for displaying text
         self.label = QLabel(label_text, self)
-        self.label.setStyleSheet("QLabel { color : white; }")
         self.label.setAlignment(Qt.AlignCenter)
+        self.label.setFont(font)
+        self.label.setStyleSheet("QLabel { color: white; background-color: black; }")
         self.label.resize(self.size())
+        self.label.raise_()
+        self.label.show()
         self.matchFound = False  # boolean flag for match simulation
         self.media_player.mediaStatusChanged.connect(self.handle_media_status_change)
+        self.setStyleSheet("background-color: black;")
 
 
     def load_video(self, url):
@@ -92,6 +96,7 @@ class VideoPlayer(QVideoWidget):
         if self.media_player.mediaStatus() == QMediaPlayer.LoadedMedia and self.matchFound:  # check if match is found
             self.label.hide()
             self.media_player.play() 
+            
     def pause(self):
         self.media_player.pause()
 
