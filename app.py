@@ -9,6 +9,24 @@ import audiofingerprint
 import find_similar_video
 import datetime
 
+# utility conversion function
+def format_time_hh_mm_ss_ms(ms):
+    # divmod is division and modulus haha cool little function here -> returns tuple (result of division, remainder of division)
+    seconds, milliseconds = divmod(ms, 1000)
+    if milliseconds >= 500:
+        seconds += 1  # Round up if milliseconds are 500 or more
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"
+
+# remove the _modifiedmp4
+def sanitize_name(full_path):
+    base_name = os.path.basename(full_path) # extract file name from full path
+    pos = base_name.find('_modified') # remove _modified portion
+    if pos != -1:
+        return base_name[:pos].capitalize()  # return everything before "_modified"
+    return base_name.capitalize()
+
 class Controls(QWidget):
     play_signal = pyqtSignal()
     pause_signal = pyqtSignal()
@@ -20,21 +38,21 @@ class Controls(QWidget):
         self.create_layout()
 
     def create_layout(self):
-        # Overall layout
+        # overall layout container
         main_layout = QVBoxLayout(self)  
 
         # upload button at the top-right
         self.upload_button = QPushButton('Upload', self)
         self.upload_button.setFixedSize(90, 35) 
         upload_layout = QHBoxLayout()
-        upload_layout.addStretch()  # Add stretch to push the button to the right
+        upload_layout.addStretch()  # add stretch to push the button to the right
         upload_layout.addWidget(self.upload_button)
-        upload_layout.setContentsMargins(0, 0, 0, 0)  # Left, Top, Right, Bottom margins
+        upload_layout.setContentsMargins(0, 0, 0, 0)  # 0 margin default
         upload_layout.setSpacing(0)
-        # Add upload layout to the main layout
+        # add upload layout to the main layout
         main_layout.addLayout(upload_layout)
 
-        # A spacer item to provide padding below the upload button if needed
+        # provide padding below the upload button if needed
         main_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         # central buttons layout
@@ -96,7 +114,7 @@ class VideoPlayer(QVideoWidget):
         self.label.show()
         
     def load_video(self, url):
-        # /home/super-rogatory/simplevideomatcher/Queries/video5_1_modified.mp4 <- Fine
+        # /home/super-rogatory/simplevideomatcher/Queries/video5_1_modified.mp4 Example <- Fine
         self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(url)))
         self.label.show()
         
@@ -119,21 +137,21 @@ class VideoPlayer(QVideoWidget):
         self.label.resize(self.size())
             
     def play_from_frame(self, frame_index):
-        # Calculate frame position in milliseconds
-        frame_time_ms = int((frame_index / 30) * 1000)  # Assuming 30fps
+        # calculate frame position in milliseconds
+        frame_time_ms = int((frame_index / 30) * 1000)  # 30 fps
         self.media_player.setPosition(frame_time_ms)
         self.media_player.play()
         self.label.hide()
     
     def play_from_start(self):
-        # Calculate frame position in milliseconds
+        # calculate frame position in milliseconds
         self.media_player.setPosition(0)
         self.media_player.play()
         self.label.hide()
         
         
         
-
+# worker is a unit of work to be put on "background" thread - processing allows execution without "Not responding..." hangup
 class Worker(QObject):
     finished = pyqtSignal(int, float)  
     error = pyqtSignal(str)
@@ -145,22 +163,23 @@ class Worker(QObject):
 
     def run(self):
         try:
-            # Clean up temporary files
+            # clean up temporary files <- from original find_frame.py
             audiofingerprint.remove_temporary_files('original_audio.wav', 'query_audio.wav')
             
-            # Audio extraction
+            # audio extraction <- from original find_frame.py
             audiofingerprint.extract_audio(self.query_video_path, 'query_audio.wav')
             audiofingerprint.extract_audio(self.original_video_path, 'original_audio.wav')
 
-            # Audio fingerprint comparison to find offset
+            # audio fingerprint comparison to find offset <- from original find_frame.py
             offset_seconds = audiofingerprint.find_offset('original_audio.wav', 'query_audio.wav', 10)
-            minutes, seconds = audiofingerprint.convert_seconds_to_min_sec(offset_seconds)
 
-            # Frame matching based on audio offset
+            # frame matching based on audio offset
             frame_match_index = find_frame.process_videos(self.original_video_path, self.query_video_path, offset_seconds)
+            
+            # this emission should get handled by our worker thread to set class attributes
             self.finished.emit(frame_match_index, offset_seconds)
 
-            # Clean up temporary files
+            # clean up temporary files
             audiofingerprint.remove_temporary_files('original_audio.wav', 'query_audio.wav')
         except Exception as e:
             self.error.emit(str(e))
@@ -173,10 +192,9 @@ class MainWindow(QMainWindow):
         self.offset_seconds = 0
         self.videos_ready = False  # Tracks if both videos are loaded
         self.query_video_name = ""
-        self.query_start_time = ""
-        self.query_duration = ""
         
     def initialize_interface(self):
+        # interface work - nothing notable here creating UI, screens, screen size, adding controls, connecting controls to handlers
         self.setWindowTitle("Video Matcher")
         screen = QApplication.primaryScreen().geometry()
         self.resize(int(screen.width() * 0.8), int(screen.height() * 0.8))
@@ -215,7 +233,7 @@ class MainWindow(QMainWindow):
         self.controls.upload_video_signal.connect(self.upload_video)
                 
     def handle_media_status_change(self, status):
-        # Check if both videos are loaded
+        # check if both videos are loaded
         if (self.query_screen.media_player.mediaStatus() == QMediaPlayer.LoadedMedia and
             self.match_screen.media_player.mediaStatus() == QMediaPlayer.LoadedMedia):
             self.videos_ready = True
@@ -226,18 +244,18 @@ class MainWindow(QMainWindow):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Video", "", "Video Files (*.mp4)")
         if file_name:
             original_video_filename = find_similar_video.find_similar_video(file_name, './preprocessing.json')
-            self.query_video_name = original_video_filename # setup query video name - OUTPUT VARIABLE
+            self.query_video_name = sanitize_name(file_name) # setup query video name - OUTPUT VARIABLE
             original_video_path = os.path.join(os.path.abspath("video/"), original_video_filename)
 
             self.query_screen.load_video(file_name)
             self.match_screen.load_video(original_video_path)
 
-            # Set "Looking for a match..." message
+            # set "Looking for a match..." message
             self.query_screen.set_message("Looking for a match...")
             self.match_screen.set_message("Looking for a match...")
             self.videos_ready = False
             
-            # Setup the thread and worker
+            # setup the thread and worker
             self.thread = QThread()
             self.worker = Worker(file_name, original_video_path)
             self.worker.moveToThread(self.thread)
@@ -245,7 +263,7 @@ class MainWindow(QMainWindow):
             self.worker.finished.connect(self.on_processing_finished)
             self.worker.error.connect(self.handle_error)
 
-            # Cleanup and thread management
+            # cleanup and thread management
             self.worker.finished.connect(self.thread.quit)
             self.worker.finished.connect(self.worker.deleteLater)
             self.thread.finished.connect(self.thread.deleteLater)
@@ -255,9 +273,7 @@ class MainWindow(QMainWindow):
     def on_processing_finished(self, frame_match_index, offset_seconds):
         # emits captured on complete of processing, keep an eye out for emits shot by Worker class
         self.frame_match_index = frame_match_index # setup frame match index - also works as an OUTPUT VARIABLE
-        self.offset_seconds = offset_seconds # capture offset seconds, works as an OUTPUT VARIABLE
-        duration_sec = self.query_screen.media_player.duration() / 1000 
-        self.query_duration = str(datetime.timedelta(seconds=duration_sec)) # capture query duration (length of the query video), OUTPUT VARIABLE
+        self.offset_seconds = offset_seconds # capture offset seconds, works as an OUTPUT VARIABLE 
         self.update_info_display()
         if self.videos_ready:
             # Enable buttons only after both videos are loaded and processing is complete
@@ -267,10 +283,14 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(1000, self.start_videos)
 
     def update_info_display(self):
-        # Convert seconds to a more readable format
-        offset_time_str = str(datetime.timedelta(seconds=int(self.offset_seconds)))
-        info_text = (f"RESULTS! \nFile: {self.query_video_name} | Start Time: {offset_time_str} | "
-                     f"Duration: {self.query_duration} | Frame Index: {self.frame_match_index}\n-------------------------------------------")
+        # convert times to readable format
+        offset_ms = self.offset_seconds * 1000
+        offset_time_str = format_time_hh_mm_ss_ms(offset_ms)
+        duration_ms = self.query_screen.media_player.duration()  # <- already in ms
+        duration_str = format_time_hh_mm_ss_ms(duration_ms)
+        
+        info_text = (f"RESULTS\n-------------------------------------------! \nFile: {self.query_video_name} | Start Time: {offset_time_str} | "
+                     f"Duration: {duration_str} | Frame Index: {self.frame_match_index}\n-------------------------------------------")
         print(info_text)
         
     def handle_error(self, message):
