@@ -270,7 +270,7 @@ class MainWindow(QMainWindow):
         # Convert seconds to a more readable format
         offset_time_str = str(datetime.timedelta(seconds=int(self.offset_seconds)))
         info_text = (f"RESULTS! \nFile: {self.query_video_name} | Start Time: {offset_time_str} | "
-                     f"Duration: {self.query_duration} | Frame Index: {self.frame_match_index}")
+                     f"Duration: {self.query_duration} | Frame Index: {self.frame_match_index}\n-------------------------------------------")
         print(info_text)
         
     def handle_error(self, message):
