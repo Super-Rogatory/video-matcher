@@ -96,14 +96,11 @@ class VideoPlayer(QVideoWidget):
     def load_video(self, url):
         # /home/super-rogatory/simplevideomatcher/Queries/video5_1_modified.mp4 <- Fine
         self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(url)))
-        if self.screen_type == "Match":
-            self.label.setText("Looking for a match...")
         self.label.show()
         
     def play(self):
-        if self.media_player.mediaStatus() == QMediaPlayer.LoadedMedia:  # check media is loaded
-            self.label.hide()
-            self.media_player.play() 
+        self.label.hide()
+        self.media_player.play()
             
     def pause(self):
         self.media_player.pause()
