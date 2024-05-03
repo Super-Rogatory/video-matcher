@@ -95,7 +95,6 @@ class VideoPlayer(QVideoWidget):
     def load_video(self, url):
         # /home/super-rogatory/simplevideomatcher/Queries/video5_1_modified.mp4 <- Fine
         self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(url)))
-        self.label.setText("Looking for a match...")  # Reset text to default or "Loading..."
         self.label.show()
         
     def play(self):
@@ -172,6 +171,9 @@ class MainWindow(QMainWindow):
         self.controls.play_signal.connect(self.query_screen.play)
         self.controls.pause_signal.connect(self.query_screen.pause)
         self.controls.reset_signal.connect(self.query_screen.reset)
+        self.controls.play_signal.connect(self.match_screen.play)
+        self.controls.pause_signal.connect(self.match_screen.pause)
+        self.controls.reset_signal.connect(self.match_screen.reset)
         self.controls.upload_video_signal.connect(self.upload_video)
                 
     def handle_media_status_change(self, status):
@@ -187,27 +189,27 @@ class MainWindow(QMainWindow):
     def upload_video(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Video", "", "Video Files (*.mp4)")
         if file_name:
-            self.query_screen.load_video(file_name)
-            self.process_video(file_name)
+            self.process_videos(file_name)
 
-    def process_video(self, query_video_path):
+    def process_videos(self, query_video_path):
         # Assuming find_similar_video returns the filename, only a piece, we need to get the whole path in order to use the value
         original_video_filename = find_similar_video.find_similar_video(query_video_path, './preprocessing.json')
         
         # Construct the full path
-        self.original_video_path = os.path.join(os.path.abspath("video/"), original_video_filename)
+        original_video_path = os.path.join(os.path.abspath("video/"), original_video_filename)
         
 
         # Display "Looking for a match..." message in the match screen
         self.match_screen.label.setText("Looking for a match...")
-        self.match_screen.load_video(self.original_video_path)
+        self.query_screen.load_video(query_video_path) # load query video
+        self.match_screen.load_video(original_video_path) # load match video
         
         # Remove temporary files
         audiofingerprint.remove_temporary_files('original_audio.wav', 'query_audio.wav')
     
         # Audio and video frame matching logic
         audiofingerprint.extract_audio(query_video_path, 'query_audio.wav')
-        audiofingerprint.extract_audio(self.original_video_path, 'original_audio.wav')
+        audiofingerprint.extract_audio(original_video_path, 'original_audio.wav')
         
         # Analyze audio to find the offset, offset_seconds is total_seconds
         offset_seconds = audiofingerprint.find_offset('original_audio.wav', 'query_audio.wav', 10)
@@ -218,10 +220,12 @@ class MainWindow(QMainWindow):
         audiofingerprint.remove_temporary_files('original_audio.wav', 'query_audio.wav')
         
         # finish find frame functionality
-        frame_match_index = find_frame.process_videos(self.original_video_path, query_video_path, offset_seconds)
+        frame_match_index = find_frame.process_videos(original_video_path, query_video_path, offset_seconds)
 
         # Update the match screen to play from the identified frame
+        self.query_screen.play_from_frame(0, 0)
         self.match_screen.play_from_frame(frame_match_index, offset_seconds)
+        
      
 def main():
     app = QApplication(sys.argv)
