@@ -90,18 +90,18 @@ def get_video_duration(file_path):
     duration = float(metadata["format"]["duration"])
     return duration
 
-def process_videos():
+def process_videos(input_video_path, query_video_path, total_seconds):
     """
     Process videos to find the best match frame.
     """
-    video_path = "./video/"
-    origin_video = find_similar_video.most_similar_video
-    input_video_path = video_path + origin_video
-    query_video_path = find_similar_video.query_video_path
-    query_video_duration = get_video_duration(query_video_path)
+    # video_path = "./video/"
+    # origin_video = find_similar_video.most_similar_video
+    # input_video_path = video_path + origin_video
+    # query_video_path = find_similar_video.query_video_path
+    # query_video_duration = get_video_duration(query_video_path)
     video_cut_duration = 10
 
-    start_time = int(audiofingerprint.total_seconds) - 2
+    start_time = int(total_seconds) - 2
     start_time = max(start_time, 0)
     end_time = start_time + video_cut_duration + 4
 

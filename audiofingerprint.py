@@ -57,29 +57,29 @@ def convert_seconds_to_min_sec(seconds):
 
     return minutes, remaining_seconds
 
-def process_audio_analysis():
-    """
-    Process audio analysis to find the offset of the query audio within the original video's audio.
-    """
-    original_video_name = find_similar_video.most_similar_video
-    original_video_path = './video/' + original_video_name
-    query_video_path = find_similar_video.query_video_path
+# def process_audio_analysis():
+#     """
+#     Process audio analysis to find the offset of the query audio within the original video's audio.
+#     """
+#     original_video_name = find_similar_video.most_similar_video
+#     original_video_path = './video/' + original_video_name
+#     query_video_path = find_similar_video.query_video_path
 
-    original_audio = 'original_audio.wav'
-    query_audio = 'query_audio.wav'
+#     original_audio = 'original_audio.wav'
+#     query_audio = 'query_audio.wav'
 
-    remove_temporary_files(original_audio, query_audio)
+#     remove_temporary_files(original_audio, query_audio)
 
-    extract_audio(original_video_path, original_audio)
-    extract_audio(query_video_path, query_audio)
+#     extract_audio(original_video_path, original_audio)
+#     extract_audio(query_video_path, query_audio)
 
-    offset = find_offset(original_audio, query_audio, 10)  # Analyze first 10 seconds of the audio
-    total_seconds = offset
-    minutes, seconds = convert_seconds_to_min_sec(total_seconds)
+#     offset = find_offset(original_audio, query_audio, 10)  # Analyze first 10 seconds of the audio
+#     total_seconds = offset
+#     minutes, seconds = convert_seconds_to_min_sec(total_seconds)
 
-    print(f"The query audio is found at {minutes} minutes and {seconds} seconds in the {original_video_name}.")
+#     print(f"The query audio is found at {minutes} minutes and {seconds} seconds in the {original_video_name}.")
 
-    remove_temporary_files(original_audio, query_audio)
+#     remove_temporary_files(original_audio, query_audio)
 
 # # Paths to the video files
 # original_video_name = find_similar_video.most_similar_video

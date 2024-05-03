@@ -219,10 +219,10 @@ class MainWindow(QMainWindow):
         audiofingerprint.remove_temporary_files('original_audio.wav', 'query_audio.wav')
         
         # finish find frame functionality
-        # frame_match_index = find_frame.find_best_match(self.original_video_path, query_video_path)
+        frame_match_index = find_frame.process_videos(self.original_video_path, query_video_path, offset_seconds)
 
-        # # Update the match screen to play from the identified frame
-        # self.match_screen.play_from_frame(frame_match_index, offset_seconds)
+        # Update the match screen to play from the identified frame
+        self.match_screen.play_from_frame(frame_match_index, offset_seconds)
      
 def main():
     app = QApplication(sys.argv)
