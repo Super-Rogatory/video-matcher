@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtGui import QFont
+from find_similar_video import find_similar_video
 
 class Controls(QWidget):
     play_signal = pyqtSignal()
@@ -67,6 +68,7 @@ class Controls(QWidget):
         self.upload_button.clicked.connect(self.upload_video_signal.emit)
         
 class VideoPlayer(QVideoWidget):
+    matched_video_signal = pyqtSignal(str)
     def __init__(self, label_text):
         super().__init__()
         self.screen_type = label_text
@@ -86,12 +88,27 @@ class VideoPlayer(QVideoWidget):
         self.setStyleSheet("background-color: black;")
 
 
-    def load_video(self, url):
-        self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(url)))
-        if self.screen_type == "Match":
-            self.label.setText("Looking for a match...")  # change text when loading a video   
-        QTimer.singleShot(5000, self.simulate_match_found) # DELETE AFTER
-        
+    # def load_video(self, query_video_path):
+    #     self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(query_video_path)))
+    #     find_similar_video(q_v_p=query_video_path, json_path='./proprocessing.json')
+    #     # if self.screen_type == "Match":
+    #     #     self.label.setText("Looking for a match...")  # change text when loading a video   
+    #     # QTimer.singleShot(5000, self.simulate_match_found) # DELETE AFTER
+    
+    def load_video(self, query_video_path, as_query=True):
+        self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(query_video_path)))
+        if as_query:
+            self.label.setText("Looking for a match...")
+            self.find_and_load_match(query_video_path)
+
+
+    def find_and_load_match(self, query_video_path):
+        json_path = './preprocessing.json'
+        # This method should be updated to not only find but also load the matched video
+        matched_video_path = find_similar_video(query_video_path, json_path)
+        self.matchFound = True  # assuming the find_similar_video will always find a match
+        self.matched_video_signal.emit(matched_video_path)  # Custom signal to load matched video
+    
     def play(self):
         if self.media_player.mediaStatus() == QMediaPlayer.LoadedMedia and self.matchFound:  # check if match is found
             self.label.hide()
@@ -124,7 +141,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initialize_interface()
-  
+        self.query_screen.matched_video_signal.connect(self.match_screen.load_video)
+
     def initialize_interface(self):
         self.setWindowTitle("Video Matcher")
         screen = QApplication.primaryScreen().geometry()
@@ -158,6 +176,10 @@ class MainWindow(QMainWindow):
         self.controls.play_signal.connect(self.query_screen.play)
         self.controls.pause_signal.connect(self.query_screen.pause)
         self.controls.reset_signal.connect(self.query_screen.reset)
+        self.controls.play_signal.connect(self.match_screen.play)
+        self.controls.pause_signal.connect(self.match_screen.pause)
+        self.controls.reset_signal.connect(self.match_screen.reset)
+        
         self.controls.upload_video_signal.connect(self.upload_video)
                 
     def handle_media_status_change(self, status):
@@ -170,12 +192,26 @@ class MainWindow(QMainWindow):
             self.controls.pause_button.setEnabled(False)
             self.controls.reset_button.setEnabled(False)
             
-    def upload_video(self):
+    def get_path(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Video", "", "Video Files (*.mp4)")
-        if file_name:
-            self.query_screen.load_video(file_name)
-            self.match_screen.load_video(file_name)
-        
+        return file_name
+   
+    # def upload_video(self):
+    #     query_video_path = self.get_path()
+    #     print(query_video_path)
+    #     if query_video_path:
+    #         self.query_screen.load_video(query_video_path)
+    #         self.match_screen.load_video(query_video_path)
+
+    # In MainWindow
+    def upload_video(self):
+        query_video_path = self.get_path()
+        if query_video_path:
+            self.query_screen.load_video(query_video_path, as_query=True)
+
+    # Add a method in MainWindow to load matched video
+    def load_matched_video(self, matched_video_path):
+        self.match_screen.load_video(matched_video_path, as_query=False)
 def main():
     app = QApplication(sys.argv)
     main_window = MainWindow()
