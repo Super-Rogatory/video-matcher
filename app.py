@@ -95,10 +95,12 @@ class VideoPlayer(QVideoWidget):
     def load_video(self, url):
         # /home/super-rogatory/simplevideomatcher/Queries/video5_1_modified.mp4 <- Fine
         self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(url)))
+        if self.screen_type == "Match":
+            self.label.setText("Looking for a match...")
         self.label.show()
         
     def play(self):
-        if self.media_player.mediaStatus() == QMediaPlayer.LoadedMedia and self.matchFound:  # check if match is found
+        if self.media_player.mediaStatus() == QMediaPlayer.LoadedMedia:  # check if match is found
             self.label.hide()
             self.media_player.play() 
             
@@ -117,17 +119,22 @@ class VideoPlayer(QVideoWidget):
         self.label.resize(self.size())
 
     def handle_media_status_change(self, status):
-        if status == QMediaPlayer.LoadedMedia and self.matchFound:
+        if status == QMediaPlayer.LoadedMedia:
             self.label.hide()
             self.play()  
             
-    def play_from_frame(self, frame_index, offset_seconds):
+    def play_from_frame(self, frame_index):
         # Calculate frame position in milliseconds
         frame_time_ms = int((frame_index / 30) * 1000)  # Assuming 30fps
         self.media_player.setPosition(frame_time_ms)
         self.media_player.play()
         self.label.hide()
-        
+    
+    def play_from_start(self):
+        # Calculate frame position in milliseconds
+        self.media_player.setPosition(0)
+        self.media_player.play()
+        self.label.hide()
         
         
         
@@ -136,7 +143,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initialize_interface()
-
+        self.frame_match_index = 0
         
     def initialize_interface(self):
         self.setWindowTitle("Video Matcher")
@@ -200,7 +207,6 @@ class MainWindow(QMainWindow):
         
 
         # Display "Looking for a match..." message in the match screen
-        self.match_screen.label.setText("Looking for a match...")
         self.query_screen.load_video(query_video_path) # load query video
         self.match_screen.load_video(original_video_path) # load match video
         
@@ -220,12 +226,14 @@ class MainWindow(QMainWindow):
         audiofingerprint.remove_temporary_files('original_audio.wav', 'query_audio.wav')
         
         # finish find frame functionality
-        frame_match_index = find_frame.process_videos(original_video_path, query_video_path, offset_seconds)
+        self.frame_match_index = find_frame.process_videos(original_video_path, query_video_path, offset_seconds)
 
-        # Update the match screen to play from the identified frame
-        self.query_screen.play_from_frame(0, 0)
-        self.match_screen.play_from_frame(frame_match_index, offset_seconds)
-        
+        QTimer.singleShot(1000, self.start_videos)
+
+    def start_videos(self):
+        # Start playing videos from the beginning or matched frame
+        self.query_screen.play_from_start()
+        self.match_screen.play_from_frame(self.frame_match_index)       
      
 def main():
     app = QApplication(sys.argv)
