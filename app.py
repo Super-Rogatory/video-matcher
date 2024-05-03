@@ -243,6 +243,11 @@ class MainWindow(QMainWindow):
     def upload_video(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Video", "", "Video Files (*.mp4)")
         if file_name:
+            # disable controls immediately after a file is selected
+            self.controls.play_button.setEnabled(False)
+            self.controls.pause_button.setEnabled(False)
+            self.controls.reset_button.setEnabled(False)
+
             original_video_filename = find_similar_video.find_similar_video(file_name, './preprocessing.json')
             self.query_video_name = sanitize_name(file_name) # setup query video name - OUTPUT VARIABLE
             original_video_path = os.path.join(os.path.abspath("video/"), original_video_filename)
@@ -274,9 +279,9 @@ class MainWindow(QMainWindow):
         # emits captured on complete of processing, keep an eye out for emits shot by Worker class
         self.frame_match_index = frame_match_index # setup frame match index - also works as an OUTPUT VARIABLE
         self.offset_seconds = offset_seconds # capture offset seconds, works as an OUTPUT VARIABLE 
-        self.update_info_display()
         if self.videos_ready:
             # Enable buttons only after both videos are loaded and processing is complete
+            self.update_info_display()
             self.controls.play_button.setEnabled(True)
             self.controls.pause_button.setEnabled(True)
             self.controls.reset_button.setEnabled(True)
