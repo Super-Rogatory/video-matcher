@@ -55,9 +55,9 @@ def find_similar_video(query_video_path, json_path):
     return sorted(similarities.items(), key=lambda x: -x[1])[0][0]
 
 # Example usage
-query_video_path = './Queries/video10_1_modified.mp4'  # Path to the query video
-json_path = "./preprocessing.json"  # Preprocessing JSON file path
+# query_video_path = './Queries/video10_1_modified.mp4'  # Path to the query video
+# json_path = "./preprocessing.json"  # Preprocessing JSON file path
 
 # Find the most similar video
-most_similar_video = find_similar_video(query_video_path, json_path)
-print("The most similar video is:", most_similar_video)
+# most_similar_video = find_similar_video(query_video_path, json_path)
+# print("The most similar video is:", most_similar_video)

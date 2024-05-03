@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
-import audiofingerprint
+import audiofingerprint # audio fingerprint gets - hit first
 import find_similar_video
 from moviepy.editor import VideoFileClip
 import subprocess
@@ -90,50 +90,79 @@ def get_video_duration(file_path):
     duration = float(metadata["format"]["duration"])
     return duration
 
+def process_videos():
+    """
+    Process videos to find the best match frame.
+    """
+    video_path = "./video/"
+    origin_video = find_similar_video.most_similar_video
+    input_video_path = video_path + origin_video
+    query_video_path = find_similar_video.query_video_path
+    query_video_duration = get_video_duration(query_video_path)
+    video_cut_duration = 10
 
-# Specify the input video file path
-video_path = "./video/"
-origin_video = find_similar_video.most_similar_video
-input_video_path = video_path + origin_video
-query_video_path = find_similar_video.query_video_path
-query_video_duration = get_video_duration(query_video_path)
-video_cut_duration = 10
+    start_time = int(audiofingerprint.total_seconds) - 2
+    start_time = max(start_time, 0)
+    end_time = start_time + video_cut_duration + 4
 
-# Specify the start and end times in seconds
-start_time = int(audiofingerprint.total_seconds) - 2
-if start_time < 2:
-    start_time = 0
-end_time = start_time + video_cut_duration + 4 
+    output_video_path = "output_video.mp4"
+    video = VideoFileClip(input_video_path)
+    video_cut = video.subclip(start_time, end_time)
+    video_cut.write_videofile(output_video_path, codec="libx264")
 
-# Specify the output video file path
-output_video_path = "output_video.mp4"
+    output_query_video_path = "output_query_video.mp4"
+    video = VideoFileClip(query_video_path)
+    video_cut = video.subclip(0, video_cut_duration)
+    video_cut.write_videofile(output_query_video_path, codec="libx264")
 
-# Load the video clip
-video = VideoFileClip(input_video_path)
+    frame = find_best_match(output_video_path, output_query_video_path)
+    frame_num = int(start_time * 30 + frame) - 1
+    print(frame_num)
 
-# Cut the video clip from start_time to end_time
-video_cut = video.subclip(start_time, end_time)
+# # Specify the input video file path
+# video_path = "./video/"
 
-# Save the cut video to the specified path
-video_cut.write_videofile(output_video_path, codec="libx264")
+# origin_video = find_similar_video.most_similar_video
+# input_video_path = video_path + origin_video
+# query_video_path = find_similar_video.query_video_path
+# query_video_duration = get_video_duration(query_video_path)
+# video_cut_duration = 10
 
-# Specify the output video file path
-output_query_video_path = "output_query_video.mp4"
+# # Specify the start and end times in seconds
+# start_time = int(audiofingerprint.total_seconds) - 2
+# if start_time < 2:
+#     start_time = 0
+# end_time = start_time + video_cut_duration + 4 
 
-# Load the video clip
-video = VideoFileClip(query_video_path)
+# # Specify the output video file path
+# output_video_path = "output_video.mp4"
 
-# Cut the video clip from start_time to end_time
-video_cut = video.subclip(0, video_cut_duration)
+# # Load the video clip
+# video = VideoFileClip(input_video_path)
 
-# Save the cut video to the specified path
-video_cut.write_videofile(output_query_video_path, codec="libx264")
+# # Cut the video clip from start_time to end_time
+# video_cut = video.subclip(start_time, end_time)
+
+# # Save the cut video to the specified path
+# video_cut.write_videofile(output_video_path, codec="libx264")
+
+# # Specify the output video file path
+# output_query_video_path = "output_query_video.mp4"
+
+# # Load the video clip
+# video = VideoFileClip(query_video_path)
+
+# # Cut the video clip from start_time to end_time
+# video_cut = video.subclip(0, video_cut_duration)
+
+# # Save the cut video to the specified path
+# video_cut.write_videofile(output_query_video_path, codec="libx264")
 
 
-# Usage:
-frame = find_best_match('output_video.mp4', "output_query_video.mp4")
+# # Usage:
+# frame = find_best_match('output_video.mp4', "output_query_video.mp4")
+# # print(frame_num)
+# # print(audiofingerprint.total_seconds)
+# # print(start_time * 30)
+# frame_num = int(start_time * 30 + frame)-1
 # print(frame_num)
-# print(audiofingerprint.total_seconds)
-# print(start_time * 30)
-frame_num = int(start_time * 30 + frame)-1
-print(frame_num)

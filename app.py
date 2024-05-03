@@ -1,10 +1,12 @@
-import sys
+import sys, os
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QMainWindow, QFileDialog, QSpacerItem, QSizePolicy, QLabel
 from PyQt5.QtCore import Qt, QUrl, QTimer, pyqtSignal
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtGui import QFont
-from find_similar_video import find_similar_video
+import find_frame
+import audiofingerprint
+import find_similar_video
 
 class Controls(QWidget):
     play_signal = pyqtSignal()
@@ -66,17 +68,19 @@ class Controls(QWidget):
         self.pause_button.clicked.connect(self.pause_signal.emit)
         self.reset_button.clicked.connect(self.reset_signal.emit)
         self.upload_button.clicked.connect(self.upload_video_signal.emit)
+    
+    
+    
         
 class VideoPlayer(QVideoWidget):
-    matched_video_signal = pyqtSignal(str)
-    def __init__(self, label_text):
+    def __init__(self, screen_type):
         super().__init__()
-        self.screen_type = label_text
+        self.screen_type = screen_type  
         self.media_player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-        self.media_player.setVideoOutput(self)  
+        self.media_player.setVideoOutput(self)
         font = QFont("Segoe UI", 12)
         # initialize label for displaying text
-        self.label = QLabel(label_text, self)
+        self.label = QLabel(self.screen_type, self)
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setFont(font)
         self.label.setStyleSheet("QLabel { color: white; background-color: black; }")
@@ -88,27 +92,12 @@ class VideoPlayer(QVideoWidget):
         self.setStyleSheet("background-color: black;")
 
 
-    # def load_video(self, query_video_path):
-    #     self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(query_video_path)))
-    #     find_similar_video(q_v_p=query_video_path, json_path='./proprocessing.json')
-    #     # if self.screen_type == "Match":
-    #     #     self.label.setText("Looking for a match...")  # change text when loading a video   
-    #     # QTimer.singleShot(5000, self.simulate_match_found) # DELETE AFTER
-    
-    def load_video(self, query_video_path, as_query=True):
-        self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(query_video_path)))
-        if as_query:
-            self.label.setText("Looking for a match...")
-            self.find_and_load_match(query_video_path)
-
-
-    def find_and_load_match(self, query_video_path):
-        json_path = './preprocessing.json'
-        # This method should be updated to not only find but also load the matched video
-        matched_video_path = find_similar_video(query_video_path, json_path)
-        self.matchFound = True  # assuming the find_similar_video will always find a match
-        self.matched_video_signal.emit(matched_video_path)  # Custom signal to load matched video
-    
+    def load_video(self, url):
+        # /home/super-rogatory/simplevideomatcher/Queries/video5_1_modified.mp4 <- Fine
+        self.media_player.setMedia(QMediaContent(QUrl.fromLocalFile(url)))
+        self.label.setText("Looking for a match...")  # Reset text to default or "Loading..."
+        self.label.show()
+        
     def play(self):
         if self.media_player.mediaStatus() == QMediaPlayer.LoadedMedia and self.matchFound:  # check if match is found
             self.label.hide()
@@ -132,17 +121,24 @@ class VideoPlayer(QVideoWidget):
         if status == QMediaPlayer.LoadedMedia and self.matchFound:
             self.label.hide()
             self.play()  
-    # DELETE LATER
-    def simulate_match_found(self):
-        self.matchFound = True
-        self.handle_media_status_change(self.media_player.mediaStatus())
+            
+    def play_from_frame(self, frame_index, offset_seconds):
+        # Calculate frame position in milliseconds
+        frame_time_ms = int((frame_index / 30) * 1000)  # Assuming 30fps
+        self.media_player.setPosition(frame_time_ms)
+        self.media_player.play()
+        self.label.hide()
+        
+        
+        
+        
         
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initialize_interface()
-        self.query_screen.matched_video_signal.connect(self.match_screen.load_video)
 
+        
     def initialize_interface(self):
         self.setWindowTitle("Video Matcher")
         screen = QApplication.primaryScreen().geometry()
@@ -176,10 +172,6 @@ class MainWindow(QMainWindow):
         self.controls.play_signal.connect(self.query_screen.play)
         self.controls.pause_signal.connect(self.query_screen.pause)
         self.controls.reset_signal.connect(self.query_screen.reset)
-        self.controls.play_signal.connect(self.match_screen.play)
-        self.controls.pause_signal.connect(self.match_screen.pause)
-        self.controls.reset_signal.connect(self.match_screen.reset)
-        
         self.controls.upload_video_signal.connect(self.upload_video)
                 
     def handle_media_status_change(self, status):
@@ -192,26 +184,46 @@ class MainWindow(QMainWindow):
             self.controls.pause_button.setEnabled(False)
             self.controls.reset_button.setEnabled(False)
             
-    def get_path(self):
-        file_name, _ = QFileDialog.getOpenFileName(self, "Open Video", "", "Video Files (*.mp4)")
-        return file_name
-   
-    # def upload_video(self):
-    #     query_video_path = self.get_path()
-    #     print(query_video_path)
-    #     if query_video_path:
-    #         self.query_screen.load_video(query_video_path)
-    #         self.match_screen.load_video(query_video_path)
-
-    # In MainWindow
     def upload_video(self):
-        query_video_path = self.get_path()
-        if query_video_path:
-            self.query_screen.load_video(query_video_path, as_query=True)
+        file_name, _ = QFileDialog.getOpenFileName(self, "Open Video", "", "Video Files (*.mp4)")
+        if file_name:
+            self.query_video_path = file_name
+            self.query_screen.load_video(file_name)
+            self.process_video(file_name)
 
-    # Add a method in MainWindow to load matched video
-    def load_matched_video(self, matched_video_path):
-        self.match_screen.load_video(matched_video_path, as_query=False)
+    def process_video(self, query_video_path):
+        # Assuming find_similar_video returns the filename, only a piece, we need to get the whole path in order to use the value
+        original_video_filename = find_similar_video.find_similar_video(query_video_path, './preprocessing.json')
+        
+        # Construct the full path
+        self.original_video_path = os.path.join(os.path.abspath("video/"), original_video_filename)
+        
+
+        # Display "Looking for a match..." message in the match screen
+        self.match_screen.label.setText("Looking for a match...")
+        self.match_screen.load_video(self.original_video_path)
+        
+        # Remove temporary files
+        audiofingerprint.remove_temporary_files('original_audio.wav', 'query_audio.wav')
+    
+        # Audio and video frame matching logic
+        audiofingerprint.extract_audio(query_video_path, 'query_audio.wav')
+        audiofingerprint.extract_audio(self.original_video_path, 'original_audio.wav')
+        
+        # Analyze audio to find the offset, offset_seconds is total_seconds
+        offset_seconds = audiofingerprint.find_offset('original_audio.wav', 'query_audio.wav', 10)
+        minutes, seconds = audiofingerprint.convert_seconds_to_min_sec(offset_seconds)
+
+        print(f"The query audio is found at {minutes} minutes and {seconds} seconds in the {original_video_filename}.")
+
+        audiofingerprint.remove_temporary_files('original_audio.wav', 'query_audio.wav')
+        
+        # finish find frame functionality
+        # frame_match_index = find_frame.find_best_match(self.original_video_path, query_video_path)
+
+        # # Update the match screen to play from the identified frame
+        # self.match_screen.play_from_frame(frame_match_index, offset_seconds)
+     
 def main():
     app = QApplication(sys.argv)
     main_window = MainWindow()
