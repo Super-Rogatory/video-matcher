@@ -7,6 +7,7 @@ from PyQt5.QtGui import QFont
 import find_frame
 import audiofingerprint
 import find_similar_video
+import datetime
 
 class Controls(QWidget):
     play_signal = pyqtSignal()
@@ -91,6 +92,7 @@ class VideoPlayer(QVideoWidget):
 
     def set_message(self, message):
         self.label.setText(message)
+        self.label.update() 
         self.label.show()
         
     def load_video(self, url):
@@ -133,7 +135,7 @@ class VideoPlayer(QVideoWidget):
         
 
 class Worker(QObject):
-    finished = pyqtSignal(int)
+    finished = pyqtSignal(int, float)  
     error = pyqtSignal(str)
 
     def __init__(self, query_video_path, original_video_path):
@@ -156,7 +158,7 @@ class Worker(QObject):
 
             # Frame matching based on audio offset
             frame_match_index = find_frame.process_videos(self.original_video_path, self.query_video_path, offset_seconds)
-            self.finished.emit(frame_match_index)
+            self.finished.emit(frame_match_index, offset_seconds)
 
             # Clean up temporary files
             audiofingerprint.remove_temporary_files('original_audio.wav', 'query_audio.wav')
@@ -168,8 +170,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.initialize_interface()
         self.frame_match_index = 0
+        self.offset_seconds = 0
         self.videos_ready = False  # Tracks if both videos are loaded
-
+        self.query_video_name = ""
+        self.query_start_time = ""
+        self.query_duration = ""
         
     def initialize_interface(self):
         self.setWindowTitle("Video Matcher")
@@ -221,6 +226,7 @@ class MainWindow(QMainWindow):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Video", "", "Video Files (*.mp4)")
         if file_name:
             original_video_filename = find_similar_video.find_similar_video(file_name, './preprocessing.json')
+            self.query_video_name = original_video_filename # setup query video name - OUTPUT VARIABLE
             original_video_path = os.path.join(os.path.abspath("video/"), original_video_filename)
 
             self.query_screen.load_video(file_name)
@@ -246,8 +252,13 @@ class MainWindow(QMainWindow):
 
             self.thread.start()
 
-    def on_processing_finished(self, frame_match_index):
-        self.frame_match_index = frame_match_index
+    def on_processing_finished(self, frame_match_index, offset_seconds):
+        # emits captured on complete of processing, keep an eye out for emits shot by Worker class
+        self.frame_match_index = frame_match_index # setup frame match index - also works as an OUTPUT VARIABLE
+        self.offset_seconds = offset_seconds # capture offset seconds, works as an OUTPUT VARIABLE
+        duration_sec = self.query_screen.media_player.duration() / 1000 
+        self.query_duration = str(datetime.timedelta(seconds=duration_sec)) # capture query duration (length of the query video), OUTPUT VARIABLE
+        self.update_info_display()
         if self.videos_ready:
             # Enable buttons only after both videos are loaded and processing is complete
             self.controls.play_button.setEnabled(True)
@@ -255,6 +266,13 @@ class MainWindow(QMainWindow):
             self.controls.reset_button.setEnabled(True)
         QTimer.singleShot(1000, self.start_videos)
 
+    def update_info_display(self):
+        # Convert seconds to a more readable format
+        offset_time_str = str(datetime.timedelta(seconds=int(self.offset_seconds)))
+        info_text = (f"RESULTS! \nFile: {self.query_video_name} | Start Time: {offset_time_str} | "
+                     f"Duration: {self.query_duration} | Frame Index: {self.frame_match_index}")
+        print(info_text)
+        
     def handle_error(self, message):
         QMessageBox.critical(self, "Error", message)
 
