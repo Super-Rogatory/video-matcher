@@ -117,7 +117,7 @@ def process_videos(input_video_path, query_video_path, total_seconds):
 
     frame = find_best_match(output_video_path, output_query_video_path)
     frame_num = int(start_time * 30 + frame) - 1
-    print(frame_num)
+    return frame_num
 
 # # Specify the input video file path
 # video_path = "./video/"

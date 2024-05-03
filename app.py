@@ -187,7 +187,6 @@ class MainWindow(QMainWindow):
     def upload_video(self):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Video", "", "Video Files (*.mp4)")
         if file_name:
-            self.query_video_path = file_name
             self.query_screen.load_video(file_name)
             self.process_video(file_name)
 
